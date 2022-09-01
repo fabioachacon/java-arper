@@ -5,17 +5,20 @@ import java.util.concurrent.Executors;
 
 import org.pcap4j.core.*;
 import org.pcap4j.core.BpfProgram.BpfCompileMode;
-import org.pcap4j.packet.IpV4Packet;
 import org.pcap4j.packet.Packet;
-import org.pcap4j.packet.IpV4Packet.IpV4Header;
 import com.pkt.sniff.utils.NetworkUtils;
 import com.pkt.sniff.utils.Utils;
 
 public class Sniff {
     private PcapNetworkInterface nif;
+    private PcapHandle handle;
 
     public Sniff(PcapNetworkInterface nif) {
-        this.nif = nif;
+        try {
+            handle = NetworkUtils.createPcapHandle(nif);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     public void run() {
@@ -42,31 +45,18 @@ public class Sniff {
 
     }
 
+    public void setFilter(String filter) {
+        try {
+            handle.setFilter(filter, BpfCompileMode.OPTIMIZE);
+        } catch (PcapNativeException e) {
+            e.printStackTrace();
+        } catch (NotOpenException e) {
+            e.printStackTrace();
+        }
+    }
+
     public Packet capturePacket() throws Exception {
-        PcapHandle handle = NetworkUtils.createPcapHandle(nif);
         Packet packet = handle.getNextPacketEx();
-
-        handle.close();
-
-        return packet;
-    }
-
-    public Packet captureFilteredPacket(String filter) throws Exception {
-        PcapHandle handle = NetworkUtils.createPcapHandle(nif);
-
-        handle.setFilter(filter, BpfCompileMode.OPTIMIZE);
-        Packet packet = handle.getNextPacketEx();
-
-        handle.close();
-
-        return packet;
-    }
-
-    public Packet capturePacket(String ipAddr) throws Exception {
-        PcapHandle handle = NetworkUtils.createPcapHandle(ipAddr);
-        Packet packet = handle.getNextPacketEx();
-
-        handle.close();
 
         return packet;
     }
@@ -97,12 +87,8 @@ public class Sniff {
         }
     }
 
-    public IpV4Header getPacketHeaders(Packet packet) {
-        IpV4Packet ipV4Packet = packet.get(IpV4Packet.class);
-        IpV4Header headers = ipV4Packet.getHeader();
-
-        return headers;
-
+    public void closeHandle() {
+        handle.close();
     }
 
 }
