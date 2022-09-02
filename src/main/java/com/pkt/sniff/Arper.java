@@ -11,7 +11,6 @@ import org.pcap4j.core.PcapHandle;
 import org.pcap4j.core.PcapNetworkInterface;
 import org.pcap4j.core.PcapPacket;
 import org.pcap4j.core.BpfProgram.BpfCompileMode;
-import org.pcap4j.packet.ArpPacket;
 import org.pcap4j.packet.EthernetPacket;
 import org.pcap4j.packet.Packet;
 import org.pcap4j.packet.ArpPacket.Builder;
@@ -53,6 +52,12 @@ public class Arper {
         PcapNetworkInterface nif = NetworkUtils.selectNetWorkInterface();
         Sniff sniff = new Sniff(nif);
         sniff.setFilter("dst host " + targetIP);
+
+        summary();
+
+        Utils.sleep(2000);
+        System.out.println("Running...");
+
         while (true) {
             try {
                 poison(gatewayIP, targetIP);
@@ -70,6 +75,22 @@ public class Arper {
         System.out.println("Restoring...\n");
         restore(gatewayIP, targetIP);
 
+    }
+
+    private void summary() {
+        System.out.println("Summary: ");
+        System.out.printf("src HAddr: %s", this.attackerMac);
+        System.out.println();
+        System.out.printf("src IP: %s", this.attackerIP);
+        System.out.println();
+        System.out.printf("gateway HAddr: %s", this.gatewayMac);
+        System.out.println();
+        System.out.printf("gateway IP: %s", this.gatewayIP);
+        System.out.println();
+        System.out.printf("target HAddr: %s", this.targetMac);
+        System.out.println();
+        System.out.printf("target IP: %s", this.targetIP);
+        System.out.println();
     }
 
     private void poison(String gatewayIP, String targetIP) {
@@ -129,10 +150,8 @@ public class Arper {
             MacAddress srcHardwareAddr = frame
                     .getPacket()
                     .get(EthernetPacket.class)
-                    .getPayload()
-                    .get(ArpPacket.class)
                     .getHeader()
-                    .getSrcHardwareAddr();
+                    .getSrcAddr();
 
             return srcHardwareAddr;
         } catch (Exception e) {
