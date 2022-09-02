@@ -5,7 +5,6 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 
 import org.pcap4j.core.*;
-import org.pcap4j.core.PcapNetworkInterface;
 import org.pcap4j.core.PcapNetworkInterface.PromiscuousMode;
 import org.pcap4j.util.NifSelector;
 
@@ -13,8 +12,13 @@ public class NetworkUtils {
     private static final int SNAP_LEN = 65536;
     private static final int TIMEOUT = 10;
 
-    public static PcapHandle createPcapHandle(PcapNetworkInterface nif) throws Exception {
-        return nif.openLive(SNAP_LEN, PromiscuousMode.PROMISCUOUS, TIMEOUT);
+    public static PcapHandle createPcapHandle(PcapNetworkInterface nif) {
+        try {
+            return nif.openLive(SNAP_LEN, PromiscuousMode.PROMISCUOUS, TIMEOUT);
+        } catch (PcapNativeException e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 
     public static PcapHandle createPcapHandle(String ipAddr) throws Exception {
