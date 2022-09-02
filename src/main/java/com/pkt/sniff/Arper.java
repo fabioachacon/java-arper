@@ -29,21 +29,28 @@ public class Arper {
         configure(targetIP, gatewayIP);
     }
 
-    public Arper(String attackerIP, MacAddress attackerMac, MacAddress targetMac, MacAddress gatewayMac) {
+    public Arper(String attackerIP,
+            MacAddress attackerMac,
+            String targetIP,
+            MacAddress targetMac,
+            String gatewayIP,
+            MacAddress gatewayMac) {
         this.attackerIP = attackerIP;
         this.attackerMac = attackerMac;
+        this.targetIP = targetIP;
         this.targetMac = targetMac;
+        this.gatewayIP = gatewayIP;
         this.gatewayMac = gatewayMac;
+
     }
 
     public void run() {
-
         summary();
 
         Sniff sniff = new Sniff(nif);
         sniff.setFilter("dst host " + targetIP);
 
-        System.out.println("Running...");
+        System.out.println("\nRunning...");
         Utils.sleep(2000);
 
         while (true) {
