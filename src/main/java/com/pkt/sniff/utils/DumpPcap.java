@@ -8,9 +8,8 @@ import org.pcap4j.core.PcapNetworkInterface;
 import org.pcap4j.packet.Packet;
 
 public class DumpPcap {
-    PcapHandle handle;
-    PcapDumper dumper;
-    PcapNetworkInterface nif;
+    private PcapHandle handle;
+    private PcapDumper dumper;
 
     private static final String PCAP_FILE_KEY = DumpPcap.class.getName() + ".pcapFile";
     private static final String PCAP_FILE = System.getProperty(PCAP_FILE_KEY, "dump.pcap");
