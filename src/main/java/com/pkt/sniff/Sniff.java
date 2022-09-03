@@ -87,7 +87,7 @@ public class Sniff {
         }
     }
 
-    public void closeHandle() {
+    public void close() {
         handle.close();
     }
 

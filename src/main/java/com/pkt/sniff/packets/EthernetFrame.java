@@ -17,7 +17,6 @@ public class EthernetFrame {
         this.payload = arp;
         this.dstMacAddress = dstMacAddress;
         this.srcMacAddress = srcMacAddress;
-
     }
 
     public EthernetPacket.Builder getFrame() {
