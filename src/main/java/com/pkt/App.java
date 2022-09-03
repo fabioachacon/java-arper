@@ -6,10 +6,10 @@ public class App {
 
     public static void main(String[] args) {
         final String TARGET_IP = args[0];
-        final String GATEWAY_IP = args[1];
+        final String GATEWAY_IP = args[0];
 
         Arper arper = new Arper(TARGET_IP, GATEWAY_IP);
-        arper.run();
+        arper.run(100);
 
     }
 
