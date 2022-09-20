@@ -1,4 +1,4 @@
-package com.pkt.sniff.utils;
+package com.pkt.tools.utils;
 
 import java.io.IOException;
 import java.net.InetAddress;

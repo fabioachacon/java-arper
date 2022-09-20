@@ -1,4 +1,4 @@
-package com.pkt.sniff.utils;
+package com.pkt.tools.utils;
 
 import org.pcap4j.core.NotOpenException;
 import org.pcap4j.core.PcapDumper;

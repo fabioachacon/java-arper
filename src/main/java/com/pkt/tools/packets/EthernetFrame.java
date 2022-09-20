@@ -1,4 +1,4 @@
-package com.pkt.sniff.packets;
+package com.pkt.tools.packets;
 
 import org.pcap4j.packet.Packet.Builder;
 import org.pcap4j.packet.EthernetPacket;

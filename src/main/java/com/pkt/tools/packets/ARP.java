@@ -1,4 +1,4 @@
-package com.pkt.sniff.packets;
+package com.pkt.tools.packets;
 
 import java.net.InetAddress;
 import org.pcap4j.packet.ArpPacket;

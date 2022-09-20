@@ -1,4 +1,4 @@
-package com.pkt.sniff;
+package com.pkt.tools;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -6,11 +6,11 @@ import java.util.concurrent.Executors;
 import org.pcap4j.core.*;
 import org.pcap4j.core.BpfProgram.BpfCompileMode;
 import org.pcap4j.packet.Packet;
-import com.pkt.sniff.utils.NetworkUtils;
-import com.pkt.sniff.utils.Utils;
+
+import com.pkt.tools.utils.NetworkUtils;
+import com.pkt.tools.utils.Utils;
 
 public class Sniff {
-    private PcapNetworkInterface nif;
     private PcapHandle handle;
 
     public Sniff(PcapNetworkInterface nif) {
@@ -19,6 +19,10 @@ public class Sniff {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    public Sniff(PcapHandle handle) {
+        this.handle = handle;
     }
 
     public void run() {
@@ -40,7 +44,7 @@ public class Sniff {
                 e.printStackTrace();
             }
 
-            Utils.sleep(3000);
+            Utils.sleep(2000);
         }
 
     }
@@ -63,7 +67,6 @@ public class Sniff {
 
     public void capturePackets(int count) {
         try {
-            final PcapHandle handle = NetworkUtils.createPcapHandle(nif);
             final ExecutorService pool = Executors.newCachedThreadPool();
             final PacketListener listener = new PacketListener() {
                 @Override
@@ -79,7 +82,6 @@ public class Sniff {
                 e.printStackTrace();
             } finally {
                 pool.shutdown();
-                handle.close();
             }
 
         } catch (Exception e) {

@@ -1,4 +1,4 @@
-package com.pkt.sniff.utils;
+package com.pkt.tools.utils;
 
 public class Utils {
     public static void sleep(long time) {
